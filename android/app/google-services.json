@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "335170233699",
+    "project_id": "login-medico-fdbc0",
+    "storage_bucket": "login-medico-fdbc0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:335170233699:android:5937c4347eba956d541f56",
+        "android_client_info": {
+          "package_name": "com.example.login_medico"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9B0AxFregz5NobCdbQR1egbsh_JbzZg4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
