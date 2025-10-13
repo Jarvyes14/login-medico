@@ -23,7 +23,7 @@ Aplicación de inicio de sesión desarrollada en Flutter con integración de Fir
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/TU_USUARIO/mi_app_login.git
+git clone https://github.com/Jarvyes14/login-medico
 cd mi_app_login
 ```
 
