@@ -74,7 +74,7 @@ lib/
 
 ## 📸 Capturas de pantalla
 
-*(Agregar tus capturas aquí)*
+![alt text](image.png)
 
 ## 🔐 Funcionalidades de Firebase
 
