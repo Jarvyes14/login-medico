@@ -1,58 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/auth_service.dart';
-import 'home_screen.dart';
-import 'register_screen.dart';
-import 'forgot_password_screen.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
+import '../../models/user_model.dart';
+import '../home/home_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({Key? key}) : super(key: key);
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
+  final _firestoreService = FirestoreService();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
+    _nombreController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      final error = await _authService.signIn(
+      final error = await _authService.signUp(
         _emailController.text,
         _passwordController.text,
+        _nombreController.text,
       );
 
-      setState(() => _isLoading = false);
-
       if (error == null) {
-        // Éxito - navegar a home
+        // Crear documento de usuario en Firestore
+        final user = _authService.currentUser;
+        if (user != null) {
+          final userModel = UserModel(
+            uid: user.uid,
+            email: _emailController.text,
+            nombre: _nombreController.text,
+            createdAt: DateTime.now(),
+          );
+          
+          await _firestoreService.createUser(userModel);
+        }
+
+        setState(() => _isLoading = false);
+
         if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Cuenta creada exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
         }
       } else {
-        // Mostrar error
+        setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(error), backgroundColor: Colors.red),
           );
         }
       }
@@ -62,6 +84,12 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Crear cuenta'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.blue[900],
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -69,40 +97,52 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo/Icono médico
                   Icon(
-                    Icons.local_hospital_rounded,
+                    Icons.person_add_outlined,
                     size: 80,
                     color: Colors.blue[700],
                   ),
-                  const SizedBox(height: 16),
-
-                  // Título
+                  const SizedBox(height: 24),
                   Text(
-                    'Bienvenido',
+                    'Regístrate',
                     style: GoogleFonts.poppins(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Colors.blue[900],
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-
                   Text(
-                    'Accede a tu cuenta',
+                    'Crea tu cuenta para comenzar',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: Colors.grey[600],
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
-
-                  // Campo de correo electrónico
+                  const SizedBox(height: 32),
+                  TextFormField(
+                    controller: _nombreController,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre completo',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Por favor ingresa tu nombre';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -126,8 +166,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-
-                  // Campo de contraseña
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -152,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Por favor ingresa tu contraseña';
+                        return 'Por favor ingresa una contraseña';
                       }
                       if (value.length < 6) {
                         return 'La contraseña debe tener al menos 6 caracteres';
@@ -160,31 +198,43 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 8),
-
-                  // Botón "Olvidé mi contraseña"
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ForgotPasswordScreen(),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        '¿Olvidaste tu contraseña?',
-                        style: TextStyle(color: Colors.blue[700]),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    obscureText: _obscureConfirmPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Confirmar contraseña',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: () {
+                          setState(
+                              () => _obscureConfirmPassword = !_obscureConfirmPassword);
+                        },
                       ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Por favor confirma tu contraseña';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'Las contraseñas no coinciden';
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(height: 24),
-
-                  // Botón de inicio de sesión
+                  const SizedBox(height: 32),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
+                    onPressed: _isLoading ? null : _handleRegister,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[700],
                       foregroundColor: Colors.white,
@@ -192,7 +242,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      elevation: 2,
                     ),
                     child: _isLoading
                         ? const SizedBox(
@@ -204,55 +253,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           )
                         : Text(
-                            'Iniciar sesión',
+                            'Crear cuenta',
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey[300])),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'o',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey[300])),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Botón "Crear cuenta nueva"
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterScreen(),
-                        ),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue[700],
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(color: Colors.blue[700]!, width: 2),
-                    ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
                     child: Text(
-                      'Crear cuenta nueva',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      '¿Ya tienes cuenta? Inicia sesión',
+                      style: TextStyle(color: Colors.blue[700]),
                     ),
                   ),
                 ],

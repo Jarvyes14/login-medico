@@ -1,38 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/auth_service.dart';
-import 'home_screen.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
+import '../home/home_screen.dart';
+import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleRegister() async {
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      final error = await _authService.signUp(
+      final error = await _authService.signIn(
         _emailController.text,
         _passwordController.text,
       );
@@ -40,26 +40,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _isLoading = false);
 
       if (error == null) {
-        // Éxito
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cuenta creada exitosamente'),
-              backgroundColor: Colors.green,
-            ),
-          );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
         }
       } else {
-        // Error
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(error), backgroundColor: Colors.red),
           );
         }
       }
@@ -69,12 +58,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Crear cuenta'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.blue[900],
-        elevation: 0,
-      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -82,37 +65,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Form(
               key: _formKey,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Icon(
-                    Icons.person_add_outlined,
+                    Icons.local_hospital_rounded,
                     size: 80,
                     color: Colors.blue[700],
                   ),
-                  const SizedBox(height: 24),
-
+                  const SizedBox(height: 16),
                   Text(
-                    'Regístrate',
+                    'Bienvenido',
                     style: GoogleFonts.poppins(
-                      fontSize: 28,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.blue[900],
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-
                   Text(
-                    'Crea tu cuenta para comenzar',
+                    'Accede a tu cuenta',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: Colors.grey[600],
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
-
-                  // Campo de correo
+                  const SizedBox(height: 40),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -136,8 +116,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-
-                  // Campo de contraseña
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -162,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Por favor ingresa una contraseña';
+                        return 'Por favor ingresa tu contraseña';
                       }
                       if (value.length < 6) {
                         return 'La contraseña debe tener al menos 6 caracteres';
@@ -170,46 +148,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
-
-                  // Confirmar contraseña
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: _obscureConfirmPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Confirmar contraseña',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () {
-                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-                        },
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ForgotPasswordScreen(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        '¿Olvidaste tu contraseña?',
+                        style: TextStyle(color: Colors.blue[700]),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor confirma tu contraseña';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Las contraseñas no coinciden';
-                      }
-                      return null;
-                    },
                   ),
-                  const SizedBox(height: 32),
-
-                  // Botón de registro
+                  const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _handleRegister,
+                    onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[700],
                       foregroundColor: Colors.white,
@@ -217,6 +176,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      elevation: 2,
                     ),
                     child: _isLoading
                         ? const SizedBox(
@@ -228,21 +188,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           )
                         : Text(
-                            'Crear cuenta',
+                            'Iniciar sesión',
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Botón de regresar al login
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey[300])),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'o',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey[300])),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  OutlinedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterScreen(),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue[700],
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(color: Colors.blue[700]!, width: 2),
+                    ),
                     child: Text(
-                      '¿Ya tienes cuenta? Inicia sesión',
-                      style: TextStyle(color: Colors.blue[700]),
+                      'Crear cuenta nueva',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],

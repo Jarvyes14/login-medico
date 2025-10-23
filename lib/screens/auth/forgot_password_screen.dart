@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/auth_service.dart';
+import '../../services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  const ForgotPasswordScreen({Key? key}) : super(key: key);
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -30,7 +30,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() => _isLoading = false);
 
       if (error == null) {
-        // Éxito
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -41,13 +40,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           Navigator.pop(context);
         }
       } else {
-        // Error
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(error), backgroundColor: Colors.red),
           );
         }
       }
@@ -78,7 +73,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     color: Colors.blue[700],
                   ),
                   const SizedBox(height: 24),
-
                   Text(
                     '¿Olvidaste tu contraseña?',
                     style: GoogleFonts.poppins(
@@ -89,7 +83,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
-
                   Text(
                     'Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.',
                     style: GoogleFonts.poppins(
@@ -99,8 +92,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-
-                  // Campo de correo
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -124,8 +115,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     },
                   ),
                   const SizedBox(height: 24),
-
-                  // Botón de enviar
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleResetPassword,
                     style: ElevatedButton.styleFrom(
@@ -154,8 +143,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Botón de regresar
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(

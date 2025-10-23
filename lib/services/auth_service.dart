@@ -3,20 +3,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Obtener usuario actual
   User? get currentUser => _auth.currentUser;
-
-  // Stream del estado de autenticación
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Iniciar sesión
   Future<String?> signIn(String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      return null; // Éxito
+      return null;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
@@ -35,14 +31,17 @@ class AuthService {
     }
   }
 
-  // Registrar nuevo usuario
-  Future<String?> signUp(String email, String password) async {
+  Future<String?> signUp(String email, String password, String nombre) async {
     try {
-      await _auth.createUserWithEmailAndPassword(
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      return null; // Éxito
+      
+      // Actualizar displayName
+      await userCredential.user?.updateDisplayName(nombre);
+      
+      return null;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'weak-password':
@@ -59,11 +58,10 @@ class AuthService {
     }
   }
 
-  // Resetear contraseña
   Future<String?> resetPassword(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
-      return null; // Éxito
+      return null;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
@@ -78,7 +76,6 @@ class AuthService {
     }
   }
 
-  // Cerrar sesión
   Future<void> signOut() async {
     await _auth.signOut();
   }
