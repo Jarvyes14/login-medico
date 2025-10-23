@@ -59,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Header con saludo
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -92,67 +93,73 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Opciones principales
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(0),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionCard(
-                        icon: Icons.calendar_month,
-                        title: 'Agendar una Cita',
-                        color: Colors.blue[700]!,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const BookAppointmentScreen(),
-                            ),
-                          );
-                        },
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 24, top: 24),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionCard(
+                          icon: Icons.calendar_month,
+                          title: 'Agendar una Cita',
+                          color: Colors.blue[700]!,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const BookAppointmentScreen(),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildActionCard(
-                        icon: Icons.medical_services,
-                        title: 'Consejos Médicos',
-                        color: Colors.green[700]!,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MedicalTipsScreen(),
-                            ),
-                          );
-                        },
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildActionCard(
+                          icon: Icons.medical_services,
+                          title: 'Consejos Médicos',
+                          color: Colors.green[700]!,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const MedicalTipsScreen(),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 
                 const SizedBox(height: 32),
                 
                 // Sección de Especialistas
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Especialistas',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Especialistas',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        'Ver todos',
-                        style: TextStyle(color: Colors.blue[700]),
+                      TextButton(
+                        onPressed: () {},
+                        child: Text(
+                          'Ver todos',
+                          style: TextStyle(color: Colors.blue[700]),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 
                 const SizedBox(height: 16),
@@ -160,13 +167,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Lista horizontal de especialistas
                 SizedBox(
                   height: 140,
+                  width: MediaQuery.of(context).size.width + 48,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
-                      _buildSpecialistCard(
-                        icon: Icons.favorite,
-                        specialty: 'Cardiología',
-                        color: Colors.red[400]!,
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24),
+                        child: _buildSpecialistCard(
+                          icon: Icons.favorite,
+                          specialty: 'Cardiología',
+                          color: Colors.red[400]!,
+                        ),
                       ),
                       _buildSpecialistCard(
                         icon: Icons.psychology,
@@ -195,47 +206,57 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 32),
                 
                 // Sección de Doctores Populares
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Doctores Destacados',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Doctores Destacados',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        'Ver todos',
-                        style: TextStyle(color: Colors.blue[700]),
+                      TextButton(
+                        onPressed: () {},
+                        child: Text(
+                          'Ver todos',
+                          style: TextStyle(color: Colors.blue[700]),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 
                 const SizedBox(height: 16),
                 
                 // Lista de doctores
-                _buildDoctorCard(
-                  name: 'Dr. Juan Pérez',
-                  specialty: 'Cardiólogo',
-                  rating: 4.8,
-                  experience: '15 años',
-                ),
-                _buildDoctorCard(
-                  name: 'Dra. María González',
-                  specialty: 'Pediatra',
-                  rating: 4.9,
-                  experience: '12 años',
-                ),
-                _buildDoctorCard(
-                  name: 'Dr. Carlos Ramírez',
-                  specialty: 'Dermatólogo',
-                  rating: 4.7,
-                  experience: '10 años',
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+                  child: Column(
+                    children: [
+                      _buildDoctorCard(
+                        name: 'Dr. Juan Pérez',
+                        specialty: 'Cardiólogo',
+                        rating: 4.8,
+                        experience: '15 años',
+                      ),
+                      _buildDoctorCard(
+                        name: 'Dra. María González',
+                        specialty: 'Pediatra',
+                        rating: 4.9,
+                        experience: '12 años',
+                      ),
+                      _buildDoctorCard(
+                        name: 'Dr. Carlos Ramírez',
+                        specialty: 'Dermatólogo',
+                        rating: 4.7,
+                        experience: '10 años',
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
