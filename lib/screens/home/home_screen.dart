@@ -7,6 +7,7 @@ import '../messages/messages_screen.dart';
 import '../settings/settings_screen.dart';
 import '../appointment/book_appointment_screen.dart';
 import '../tips/medical_tips_screen.dart';
+import '../appointment/appointments_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -100,22 +101,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.only(left: 24, right: 24, top: 24),
                   child: Row(
                     children: [
+
+                      //Ajendar cita
                       Expanded(
                         child: _buildActionCard(
-                          icon: Icons.calendar_month,
-                          title: 'Agendar una Cita',
-                          color: Colors.blue[700]!,
+                          icon: Icons.event_note,
+                          title: 'Ver Mis Citas Médicas',
+                          color: Colors.purple[700]!,
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const BookAppointmentScreen(),
+                                builder: (_) => const AppointmentsListScreen(),
                               ),
                             );
                           },
                         ),
                       ),
+
+                      // Espacio
                       const SizedBox(width: 16),
+                      
+                      // Consejos medicos
                       Expanded(
                         child: _buildActionCard(
                           icon: Icons.medical_services,
@@ -149,13 +156,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.grey[800],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text(
-                          'Ver todos',
-                          style: TextStyle(color: Colors.blue[700]),
                         ),
                       ),
                     ],
@@ -217,13 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.grey[800],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text(
-                          'Ver todos',
-                          style: TextStyle(color: Colors.blue[700]),
                         ),
                       ),
                     ],

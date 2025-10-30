@@ -33,9 +33,7 @@ class FirestoreService {
   
   Future<String?> createAppointment(AppointmentModel appointment) async {
     try {
-      DocumentReference docRef = await _firestore
-          .collection('citas')
-          .add(appointment.toFirestore());
+      await _firestore.collection('citas').add(appointment.toFirestore());
       return null;
     } catch (e) {
       return 'Error al crear cita: $e';
@@ -51,6 +49,15 @@ class FirestoreService {
         .map((snapshot) => snapshot.docs
             .map((doc) => AppointmentModel.fromFirestore(doc))
             .toList());
+  }
+
+  // NUEVO: Actualizar cita
+  Future<void> updateAppointment(String appointmentId, Map<String, dynamic> data) async {
+    try {
+      await _firestore.collection('citas').doc(appointmentId).update(data);
+    } catch (e) {
+      throw Exception('Error al actualizar cita: $e');
+    }
   }
 
   Future<void> cancelAppointment(String appointmentId) async {
