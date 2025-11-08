@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart'; 
+import 'package:flutter/material.dart' show Colors, Icons, BoxShadow, BoxDecoration, BoxShape, CircleAvatar, IconData, InkWell, Material, RefreshIndicator; 
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
@@ -17,7 +19,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
+  // Eliminamos _currentIndex, lo maneja el CupertinoTabScaffold
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
   UserModel? _currentUser;
@@ -38,215 +40,211 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _getBody() {
-    switch (_currentIndex) {
-      case 0:
-        return _buildHomeContent();
-      case 1:
-        return const MessagesScreen();
-      case 2:
-        return const SettingsScreen();
-      default:
-        return _buildHomeContent();
-    }
-  }
-
   Widget _buildHomeContent() {
     final userName = _currentUser?.nombre ?? _authService.currentUser?.displayName ?? 'Usuario';
-    
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header con saludo
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue[700]!, Colors.blue[500]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+
+    // Usamos CupertinoPageScaffold para la página de inicio
+    return Material(
+      child: CupertinoPageScaffold(
+
+        child: RefreshIndicator(
+
+          onRefresh: _loadUserData,
+          child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '¡Hola, $userName!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                // Header con saludo (El padding superior ya no es necesario debido a CupertinoPageScaffold)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue[700]!, Colors.blue[500]!],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '¿En qué podemos ayudarte?',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Opciones principales
-          Padding(
-            padding: const EdgeInsets.all(0),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24, top: 24),
-                  child: Row(
-                    children: [
-
-                      //Ajendar cita
-                      Expanded(
-                        child: _buildActionCard(
-                          icon: Icons.event_note,
-                          title: 'Ver Mis Citas Médicas',
-                          color: Colors.purple[700]!,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AppointmentsListScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      // Espacio
-                      const SizedBox(width: 16),
-                      
-                      // Consejos medicos
-                      Expanded(
-                        child: _buildActionCard(
-                          icon: Icons.medical_services,
-                          title: 'Consejos Médicos',
-                          color: Colors.green[700]!,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const MedicalTipsScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Sección de Especialistas
-                Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Especialistas',
+                        '¡Hola, $userName!',
                         style: GoogleFonts.poppins(
-                          fontSize: 20,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
+                          color: Colors.white,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Lista horizontal de especialistas
-                SizedBox(
-                  height: 140,
-                  width: MediaQuery.of(context).size.width + 48,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 24),
-                        child: _buildSpecialistCard(
-                          icon: Icons.favorite,
-                          specialty: 'Cardiología',
-                          color: Colors.red[400]!,
-                        ),
-                      ),
-                      _buildSpecialistCard(
-                        icon: Icons.psychology,
-                        specialty: 'Neurología',
-                        color: Colors.purple[400]!,
-                      ),
-                      _buildSpecialistCard(
-                        icon: Icons.child_care,
-                        specialty: 'Pediatría',
-                        color: Colors.orange[400]!,
-                      ),
-                      _buildSpecialistCard(
-                        icon: Icons.healing,
-                        specialty: 'Dermatología',
-                        color: Colors.pink[400]!,
-                      ),
-                      _buildSpecialistCard(
-                        icon: Icons.visibility,
-                        specialty: 'Oftalmología',
-                        color: Colors.teal[400]!,
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Sección de Doctores Populares
-                Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                      const SizedBox(height: 8),
                       Text(
-                        'Doctores Destacados',
+                        '¿En qué podemos ayudarte?',
                         style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                       ),
                     ],
                   ),
                 ),
                 
-                const SizedBox(height: 16),
-                
-                // Lista de doctores
+                // Opciones principales
                 Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+                  padding: const EdgeInsets.all(0),
                   child: Column(
                     children: [
-                      _buildDoctorCard(
-                        name: 'Dr. Juan Pérez',
-                        specialty: 'Cardiólogo',
-                        rating: 4.8,
-                        experience: '15 años',
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24, right: 24, top: 24),
+                        child: Row(
+                          children: [
+                            // Ajendar cita (Usamos CupertinoPageRoute para la navegación estilo iOS)
+                            Expanded(
+                              child: _buildActionCard(
+                                icon: Icons.event_note,
+                                title: 'Ver Mis Citas Médicas',
+                                color: Colors.purple[700]!,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    CupertinoPageRoute(
+                                      builder: (_) => const AppointmentsListScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                
+                            // Espacio
+                            const SizedBox(width: 16),
+                            
+                            // Consejos medicos
+                            Expanded(
+                              child: _buildActionCard(
+                                icon: Icons.medical_services,
+                                title: 'Consejos Médicos',
+                                color: Colors.green[700]!,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    CupertinoPageRoute(
+                                      builder: (_) => const MedicalTipsScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      _buildDoctorCard(
-                        name: 'Dra. María González',
-                        specialty: 'Pediatra',
-                        rating: 4.9,
-                        experience: '12 años',
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Sección de Especialistas
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24, right: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Especialistas',
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      _buildDoctorCard(
-                        name: 'Dr. Carlos Ramírez',
-                        specialty: 'Dermatólogo',
-                        rating: 4.7,
-                        experience: '10 años',
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Lista horizontal de especialistas
+                      SizedBox(
+                        height: 140,
+                        width: MediaQuery.of(context).size.width + 48,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 24),
+                              child: _buildSpecialistCard(
+                                icon: Icons.favorite,
+                                specialty: 'Cardiología',
+                                color: Colors.red[400]!,
+                              ),
+                            ),
+                            _buildSpecialistCard(
+                              icon: Icons.psychology,
+                              specialty: 'Neurología',
+                              color: Colors.purple[400]!,
+                            ),
+                            _buildSpecialistCard(
+                              icon: Icons.child_care,
+                              specialty: 'Pediatría',
+                              color: Colors.orange[400]!,
+                            ),
+                            _buildSpecialistCard(
+                              icon: Icons.healing,
+                              specialty: 'Dermatología',
+                              color: Colors.pink[400]!,
+                            ),
+                            _buildSpecialistCard(
+                              icon: Icons.visibility,
+                              specialty: 'Oftalmología',
+                              color: Colors.teal[400]!,
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Sección de Doctores Populares
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24, right: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Doctores Destacados',
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Lista de doctores
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+                        child: Column(
+                          children: [
+                            _buildDoctorCard(
+                              name: 'Dr. Juan Pérez',
+                              specialty: 'Cardiólogo',
+                              rating: 4.8,
+                              experience: '15 años',
+                            ),
+                            _buildDoctorCard(
+                              name: 'Dra. María González',
+                              specialty: 'Pediatra',
+                              rating: 4.9,
+                              experience: '12 años',
+                            ),
+                            _buildDoctorCard(
+                              name: 'Dr. Carlos Ramírez',
+                              specialty: 'Dermatólogo',
+                              rating: 4.7,
+                              experience: '10 años',
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -254,11 +252,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
-
   Widget _buildActionCard({
     required IconData icon,
     required String title,
@@ -391,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.star, color: Colors.amber, size: 16),
+                    const Icon(CupertinoIcons.star_fill, color: CupertinoColors.systemYellow, size: 16),
                     const SizedBox(width: 4),
                     Text(
                       rating.toString(),
@@ -415,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 20),
+          const Icon(CupertinoIcons.right_chevron, color: CupertinoColors.systemGrey, size: 20),
         ],
       ),
     );
@@ -423,32 +420,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _getBody(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        selectedItemColor: Colors.blue[700],
-        unselectedItemColor: Colors.grey[400],
+    // Usamos CupertinoTabScaffold para la navegación principal de pestañas
+    return CupertinoTabScaffold(
+      // La barra de pestañas
+      tabBar: CupertinoTabBar(
+        backgroundColor: CupertinoColors.systemGrey5,
+        activeColor: CupertinoColors.systemBlue,
+        inactiveColor: CupertinoColors.systemGrey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(CupertinoIcons.home),
             label: 'Inicio',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.message),
+            icon: Icon(CupertinoIcons.chat_bubble_2),
             label: 'Mensajes',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
+            icon: Icon(CupertinoIcons.settings),
             label: 'Configuración',
           ),
         ],
       ),
+      // El contenido de cada pestaña
+      tabBuilder: (context, index) {
+        return CupertinoTabView(
+          builder: (context) {
+            switch (index) {
+              case 0:
+                return _buildHomeContent();
+              case 1:
+                return const MessagesScreen();
+              case 2:
+                return const SettingsScreen();
+              default:
+                return _buildHomeContent();
+            }
+          },
+        );
+      },
     );
   }
 }

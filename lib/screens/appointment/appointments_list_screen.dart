@@ -104,38 +104,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                       color: Colors.grey[700],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Agenda tu primera cita médica',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const BookAppointmentScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agendar Cita'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
+                  
                 ],
               ),
             );
@@ -202,8 +171,11 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
             ),
           );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Nueva Cita'),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Nueva Cita',style: TextStyle(
+      color: Colors.white, // Color blanco
+      // Opcional: ajustar el tamaño o peso
+    ),),
         backgroundColor: Colors.blue[700],
       ),
     );
