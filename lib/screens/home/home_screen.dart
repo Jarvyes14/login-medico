@@ -7,7 +7,6 @@ import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import '../messages/messages_screen.dart';
 import '../settings/settings_screen.dart';
-import '../appointment/book_appointment_screen.dart';
 import '../tips/medical_tips_screen.dart';
 import '../appointment/appointments_list_screen.dart';
 

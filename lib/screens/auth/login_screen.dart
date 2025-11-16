@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
-import '../home/home_screen.dart';
+import '../../services/auth_service.dart';import '../home/home_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 

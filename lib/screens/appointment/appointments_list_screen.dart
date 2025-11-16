@@ -121,8 +121,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   apt.estado != 'cancelada' &&
                   apt.fechaHora.isBefore(DateTime.now()))
               .toList();
-          final cancelledAppointments =
-              appointments.where((apt) => apt.estado == 'cancelada').toList();
+          appointments.where((apt) => apt.estado == 'cancelada').toList();
 
           return ListView(
             padding: const EdgeInsets.all(16),
