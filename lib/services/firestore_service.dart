@@ -51,7 +51,7 @@ class FirestoreService {
             .toList());
   }
 
-  // NUEVO: Actualizar cita
+  // Actualizar cita
   Future<void> updateAppointment(String appointmentId, Map<String, dynamic> data) async {
     try {
       await _firestore.collection('citas').doc(appointmentId).update(data);
@@ -95,5 +95,78 @@ class FirestoreService {
         .collection('disponibilidad_medicos')
         .doc(availabilityId)
         .update({'esta_disponible': false});
+  }
+
+  // ============ DOCTORES ============
+  
+  // Obtener todos los doctores
+  Stream<List<UserModel>> getAllDoctors() {
+    return _firestore
+        .collection('usuarios')
+        .where('user_type', isEqualTo: 'doctor')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => UserModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Obtener doctores por especialidad
+  Stream<List<UserModel>> getDoctorsBySpecialty(String especialidad) {
+    return _firestore
+        .collection('usuarios')
+        .where('user_type', isEqualTo: 'doctor')
+        .where('especialidad', isEqualTo: especialidad)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => UserModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Obtener citas de un doctor
+  Stream<List<AppointmentModel>> getDoctorAppointments(String doctorId) {
+    return _firestore
+        .collection('citas')
+        .where('medico_id', isEqualTo: doctorId)
+        .orderBy('fecha_hora', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AppointmentModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Obtener estadísticas del doctor
+  Future<Map<String, dynamic>> getDoctorStats(String doctorId) async {
+    try {
+      final citasSnapshot = await _firestore
+          .collection('citas')
+          .where('medico_id', isEqualTo: doctorId)
+          .get();
+
+      int totalCitas = citasSnapshot.docs.length;
+      int citasPendientes = citasSnapshot.docs
+          .where((doc) => doc.data()['estado'] == 'pendiente')
+          .length;
+      int citasConfirmadas = citasSnapshot.docs
+          .where((doc) => doc.data()['estado'] == 'confirmada')
+          .length;
+      int citasCanceladas = citasSnapshot.docs
+          .where((doc) => doc.data()['estado'] == 'cancelada')
+          .length;
+
+      return {
+        'total': totalCitas,
+        'pendientes': citasPendientes,
+        'confirmadas': citasConfirmadas,
+        'canceladas': citasCanceladas,
+      };
+    } catch (e) {
+      print('Error al obtener estadísticas: $e');
+      return {
+        'total': 0,
+        'pendientes': 0,
+        'confirmadas': 0,
+        'canceladas': 0,
+      };
+    }
   }
 }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../models/appointment_model.dart';
+import '../../models/user_model.dart';
 import 'appointment_detail_screen.dart';
 import 'edit_appointment_screen.dart';
 import 'book_appointment_screen.dart';
@@ -18,6 +19,29 @@ class AppointmentsListScreen extends StatefulWidget {
 class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
+  UserModel? _currentUser;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = _authService.currentUser;
+    if (user != null) {
+      final userData = await _firestoreService.getUser(user.uid);
+      setState(() {
+        _currentUser = userData;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,10 +63,27 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
       );
     }
 
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Mis Citas',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.blue[700],
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Determinar si es doctor o paciente
+    final isDoctor = _currentUser?.isDoctor ?? false;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Mis Citas',
+          isDoctor ? 'Citas de Pacientes' : 'Mis Citas',
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blue[700],
@@ -50,7 +91,9 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
         elevation: 0,
       ),
       body: StreamBuilder<List<AppointmentModel>>(
-        stream: _firestoreService.getUserAppointments(user.uid),
+        stream: isDoctor
+            ? _firestoreService.getDoctorAppointments(user.uid)
+            : _firestoreService.getUserAppointments(user.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -97,7 +140,9 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'No tienes citas agendadas',
+                    isDoctor
+                        ? 'No tienes citas agendadas'
+                        : 'No tienes citas agendadas',
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -106,36 +151,40 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Agenda tu primera cita médica',
+                    isDoctor
+                        ? 'Los pacientes podrán agendar citas contigo'
+                        : 'Agenda tu primera cita médica',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       color: Colors.grey[500],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const BookAppointmentScreen(),
+                  if (!isDoctor) ...[
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const BookAppointmentScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Agendar Cita'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agendar Cita'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             );
@@ -152,8 +201,6 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   apt.estado != 'cancelada' &&
                   apt.fechaHora.isBefore(DateTime.now()))
               .toList();
-          final cancelledAppointments =
-              appointments.where((apt) => apt.estado == 'cancelada').toList();
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -170,7 +217,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                 ),
                 const SizedBox(height: 12),
                 ...upcomingAppointments
-                    .map((apt) => _buildAppointmentCard(apt, context)),
+                    .map((apt) => _buildAppointmentCard(apt, context, isDoctor)),
                 const SizedBox(height: 24),
               ],
 
@@ -186,31 +233,33 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                 ),
                 const SizedBox(height: 12),
                 ...pastAppointments
-                    .map((apt) => _buildAppointmentCard(apt, context)),
+                    .map((apt) => _buildAppointmentCard(apt, context, isDoctor)),
                 const SizedBox(height: 24),
               ],
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const BookAppointmentScreen(),
-            ),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Nueva Cita'),
-        backgroundColor: Colors.blue[700],
-      ),
+      floatingActionButton: !isDoctor
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const BookAppointmentScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Nueva Cita'),
+              backgroundColor: Colors.blue[700],
+            )
+          : null,
     );
   }
 
   Widget _buildAppointmentCard(
-      AppointmentModel appointment, BuildContext context) {
+      AppointmentModel appointment, BuildContext context, bool isDoctor) {
     final isPast = appointment.fechaHora.isBefore(DateTime.now());
     final isCancelled = appointment.estado == 'cancelada';
 
@@ -222,14 +271,18 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
       statusColor = Colors.red;
       statusIcon = Icons.cancel;
       statusText = 'Cancelada';
+    } else if (appointment.estado == 'confirmada') {
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle;
+      statusText = 'Confirmada';
     } else if (isPast) {
       statusColor = Colors.grey;
-      statusIcon = Icons.check_circle;
+      statusIcon = Icons.history;
       statusText = 'Completada';
     } else {
-      statusColor = Colors.green;
+      statusColor = Colors.orange;
       statusIcon = Icons.schedule;
-      statusText = 'Próxima';
+      statusText = 'Pendiente';
     }
 
     return Container(
@@ -298,7 +351,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                     PopupMenuButton<String>(
                       icon: Icon(Icons.more_vert, color: Colors.grey[600]),
                       onSelected: (value) {
-                        if (value == 'edit') {
+                        if (value == 'edit' && !isDoctor) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -309,26 +362,41 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                           );
                         } else if (value == 'cancel') {
                           _showCancelDialog(context, appointment);
+                        } else if (value == 'confirm' && isDoctor) {
+                          _confirmAppointment(context, appointment);
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, size: 20),
-                              SizedBox(width: 12),
-                              Text('Editar'),
-                            ],
+                        if (isDoctor && appointment.estado == 'pendiente')
+                          const PopupMenuItem(
+                            value: 'confirm',
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle, size: 20, color: Colors.green),
+                                SizedBox(width: 12),
+                                Text('Confirmar', style: TextStyle(color: Colors.green)),
+                              ],
+                            ),
                           ),
-                        ),
+                        if (!isDoctor)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, size: 20),
+                                SizedBox(width: 12),
+                                Text('Editar'),
+                              ],
+                            ),
+                          ),
                         const PopupMenuItem(
                           value: 'cancel',
                           child: Row(
                             children: [
                               Icon(Icons.cancel, size: 20, color: Colors.red),
                               SizedBox(width: 12),
-                              Text('Cancelar', style: TextStyle(color: Colors.red)),
+                              Text('Cancelar',
+                                  style: TextStyle(color: Colors.red)),
                             ],
                           ),
                         ),
@@ -338,7 +406,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Especialidad
+              // Información del paciente/doctor
               Row(
                 children: [
                   Container(
@@ -348,34 +416,66 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      Icons.medical_services,
+                      isDoctor ? Icons.person : Icons.medical_services,
                       color: Colors.blue[700],
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appointment.medicoId,
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                        Text(
-                          appointment.motivo,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: FutureBuilder<UserModel?>(
+                      future: isDoctor
+                          ? _firestoreService.getUser(appointment.pacienteId)
+                          : _firestoreService.getUser(appointment.medicoId),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                height: 16,
+                                width: 100,
+                                color: Colors.grey[300],
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 12,
+                                width: 150,
+                                color: Colors.grey[200],
+                              ),
+                            ],
+                          );
+                        }
+
+                        final person = snapshot.data;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isDoctor
+                                  ? person?.nombre ?? 'Paciente'
+                                  : 'Dr. ${person?.nombre ?? 'Doctor'}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                            Text(
+                              isDoctor
+                                  ? appointment.motivo
+                                  : person?.especialidad ?? 'Especialista',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -388,18 +488,13 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
                   Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
                   const SizedBox(width: 8),
                   Text(
-                    DateFormat('dd/MM/yyyy')
-                      .format(appointment.fechaHora),
+                    DateFormat('dd/MM/yyyy').format(appointment.fechaHora),
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       color: Colors.grey[700],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
+                  const SizedBox(width: 16),
                   Icon(Icons.access_time, size: 18, color: Colors.grey[600]),
                   const SizedBox(width: 8),
                   Text(
@@ -431,7 +526,7 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
           ],
         ),
         content: Text(
-          '¿Estás seguro que deseas cancelar esta cita?\n\nEspecialidad: ${appointment.medicoId}\nFecha: ${DateFormat('dd/MM/yyyy').format(appointment.fechaHora)}\nHora: ${DateFormat('hh:mm a').format(appointment.fechaHora)}',
+          '¿Estás seguro que deseas cancelar esta cita?\n\nFecha: ${DateFormat('dd/MM/yyyy').format(appointment.fechaHora)}\nHora: ${DateFormat('hh:mm a').format(appointment.fechaHora)}',
           style: GoogleFonts.poppins(),
         ),
         actions: [
@@ -460,5 +555,32 @@ class _AppointmentsListScreenState extends State<AppointmentsListScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmAppointment(
+      BuildContext context, AppointmentModel appointment) async {
+    try {
+      await _firestoreService.updateAppointment(
+        appointment.id!,
+        {'estado': 'confirmada'},
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cita confirmada exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al confirmar cita: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

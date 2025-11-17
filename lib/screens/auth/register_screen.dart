@@ -18,11 +18,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _cedulaController = TextEditingController();
+  final _telefonoController = TextEditingController();
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
+  
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String _selectedUserType = 'patient'; // 'patient' o 'doctor'
+  String? _selectedEspecialidad;
+
+  final List<String> _especialidades = [
+    'Medicina General',
+    'Pediatría',
+    'Cardiología',
+    'Dermatología',
+    'Ginecología',
+    'Traumatología',
+    'Oftalmología',
+    'Psiquiatría',
+    'Neurología',
+    'Endocrinología',
+  ];
 
   @override
   void dispose() {
@@ -30,17 +48,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _cedulaController.dispose();
+    _telefonoController.dispose();
     super.dispose();
   }
 
   Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
+      // Validar especialidad si es doctor
+      if (_selectedUserType == 'doctor' && _selectedEspecialidad == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor selecciona una especialidad'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
       setState(() => _isLoading = true);
 
       final error = await _authService.signUp(
         _emailController.text,
         _passwordController.text,
         _nombreController.text,
+        _selectedUserType,
       );
 
       if (error == null) {
@@ -51,6 +83,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             uid: user.uid,
             email: _emailController.text,
             nombre: _nombreController.text,
+            userType: _selectedUserType,
+            especialidad: _selectedUserType == 'doctor' ? _selectedEspecialidad : null,
+            cedula: _selectedUserType == 'doctor' ? _cedulaController.text : null,
+            telefono: _selectedUserType == 'doctor' ? _telefonoController.text : null,
             createdAt: DateTime.now(),
           );
           
@@ -61,8 +97,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cuenta creada exitosamente'),
+            SnackBar(
+              content: Text(
+                _selectedUserType == 'doctor'
+                    ? 'Cuenta de doctor creada exitosamente'
+                    : 'Cuenta creada exitosamente',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -100,7 +140,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Icon(
-                    Icons.person_add_outlined,
+                    _selectedUserType == 'doctor'
+                        ? Icons.medical_services_outlined
+                        : Icons.person_add_outlined,
                     size: 80,
                     color: Colors.blue[700],
                   ),
@@ -124,6 +166,98 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
+
+                  // Selector de tipo de usuario
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedUserType = 'patient';
+                                _selectedEspecialidad = null;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _selectedUserType == 'patient'
+                                    ? Colors.blue[700]
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.person_outline,
+                                    color: _selectedUserType == 'patient'
+                                        ? Colors.white
+                                        : Colors.grey[700],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Paciente',
+                                    style: GoogleFonts.poppins(
+                                      color: _selectedUserType == 'patient'
+                                          ? Colors.white
+                                          : Colors.grey[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() => _selectedUserType = 'doctor');
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _selectedUserType == 'doctor'
+                                    ? Colors.blue[700]
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.medical_services_outlined,
+                                    color: _selectedUserType == 'doctor'
+                                        ? Colors.white
+                                        : Colors.grey[700],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Doctor',
+                                    style: GoogleFonts.poppins(
+                                      color: _selectedUserType == 'doctor'
+                                          ? Colors.white
+                                          : Colors.grey[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   TextFormField(
                     controller: _nombreController,
                     decoration: InputDecoration(
@@ -143,6 +277,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -166,6 +301,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+
+                  // Campos específicos para doctores
+                  if (_selectedUserType == 'doctor') ...[
+                    DropdownButtonFormField<String>(
+                      value: _selectedEspecialidad,
+                      decoration: InputDecoration(
+                        labelText: 'Especialidad',
+                        prefixIcon: const Icon(Icons.medical_information_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                      ),
+                      items: _especialidades.map((String especialidad) {
+                        return DropdownMenuItem<String>(
+                          value: especialidad,
+                          child: Text(especialidad),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() => _selectedEspecialidad = newValue);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _cedulaController,
+                      decoration: InputDecoration(
+                        labelText: 'Cédula profesional',
+                        prefixIcon: const Icon(Icons.badge_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                      ),
+                      validator: (value) {
+                        if (_selectedUserType == 'doctor' &&
+                            (value == null || value.isEmpty)) {
+                          return 'Por favor ingresa tu cédula';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _telefonoController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Teléfono',
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                      ),
+                      validator: (value) {
+                        if (_selectedUserType == 'doctor' &&
+                            (value == null || value.isEmpty)) {
+                          return 'Por favor ingresa tu teléfono';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -199,6 +402,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
@@ -233,6 +437,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 32),
+
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleRegister,
                     style: ElevatedButton.styleFrom(
@@ -261,6 +466,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                   ),
                   const SizedBox(height: 16),
+
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
