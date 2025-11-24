@@ -1,3 +1,4 @@
+import 'package:doctor_appointment_app/screens/doctor/doctor_charts_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_service.dart';
@@ -62,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
         case 3:
           return const MessagesScreen();
         case 4:
+          return const DoctorChartsScreen();
+        case 5:
           return const SettingsScreen();
         default:
           return _buildDoctorHomeContent();
@@ -719,6 +722,10 @@ class _HomeScreenState extends State<HomeScreen> {
         BottomNavigationBarItem(
           icon: Icon(Icons.message),
           label: 'Mensajes',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.question_answer),
+          label: 'Graficos',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.settings),

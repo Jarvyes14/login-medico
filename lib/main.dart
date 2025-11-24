@@ -1,3 +1,4 @@
+import 'package:doctor_appointment_app/screens/doctor/doctor_charts_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -45,6 +46,7 @@ class MyApp extends StatelessWidget {
         '/doctor-dashboard': (context) => const DoctorDashboardScreen(),
         '/doctors-list': (context) => const DoctorsListScreen(),
         '/appointments': (context) => const AppointmentsListScreen(),
+        '/charts': (_) => const DoctorChartsScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/doctor-profile') {
