@@ -25,6 +25,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   TimeOfDay _selectedTime = TimeOfDay.now();
   UserModel? _selectedDoctor;
   bool _isLoading = false;
+  bool _isCheckingAvailability = false;
 
   @override
   void initState() {
@@ -62,25 +63,171 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
   }
 
+  Future<bool> _checkTimeAvailability(
+      DateTime selectedDate, TimeOfDay selectedTime) async {
+    try {
+      // Convertir la hora seleccionada a DateTime
+      final selectedDateTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      // Formatear fecha para la consulta
+      final dateString =
+          '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+
+      // Consultar citas existentes del mismo día
+      final querySnapshot = await _firestoreService.instance
+          .collection('citas')
+          .where('date', isEqualTo: dateString)
+          .get();
+
+      // Verificar conflictos de horario
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final existingTime = data['time'] as String; // Formato: "HH:mm"
+
+        // Parsear hora existente
+        final timeParts = existingTime.split(':');
+        final existingDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          int.parse(timeParts[0]),
+          int.parse(timeParts[1]),
+        );
+
+        // Calcular diferencia en minutos
+        final difference =
+            selectedDateTime.difference(existingDateTime).inMinutes;
+
+        // Verificar si hay conflicto (misma hora o dentro de 60 minutos)
+        if (difference.abs() < 60) {
+          return false; // Horario no disponible
+        }
+      }
+
+      return true; // Horario disponible
+    } catch (e) {
+      print('Error al verificar disponibilidad: $e');
+      return false;
+    }
+  }
+
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime,
       builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.blue[700]!,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            alwaysUse24HourFormat: false,
           ),
-          child: child!,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Colors.blue[700]!,
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          ),
         );
       },
     );
+
     if (picked != null && picked != _selectedTime) {
-      setState(() => _selectedTime = picked);
+      // Validar horario permitido (7:00 AM - 1:00 PM)
+      final pickedMinutes = picked.hour * 60 + picked.minute;
+      final minTime = 7 * 60; // 7:00 AM
+      final maxTime = 13 * 60; // 1:00 PM
+
+      if (pickedMinutes < minTime || pickedMinutes > maxTime) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.red[700]),
+                  const SizedBox(width: 8),
+                  const Text('Horario no permitido'),
+                ],
+              ),
+              content: Text(
+                'Las citas solo pueden agendarse entre las 7:00 AM y la 1:00 PM.\n\n'
+                'Esto permite que la última cita termine como máximo a las 2:00 PM.',
+                style: GoogleFonts.poppins(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        _isCheckingAvailability = true;
+      });
+
+      // Verificar disponibilidad
+      final isAvailable = await _checkTimeAvailability(_selectedDate, picked);
+
+      setState(() {
+        _isCheckingAvailability = false;
+      });
+
+      if (isAvailable) {
+        setState(() {
+          _selectedTime = picked;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Horario disponible: ${picked.format(context)}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // Mostrar mensaje de error
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange[700]),
+                  const SizedBox(width: 8),
+                  const Text('Horario no disponible'),
+                ],
+              ),
+              content: Text(
+                'Ya existe una cita en ese horario o dentro de los 60 minutos siguientes. '
+                'Por favor, selecciona otro horario.',
+                style: GoogleFonts.poppins(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -345,20 +492,42 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               ),
               const SizedBox(height: 12),
               InkWell(
-                onTap: () => _selectTime(context),
+                onTap: _isCheckingAvailability ? null : () => _selectTime(context),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(
+                      color: _isCheckingAvailability
+                          ? Colors.grey[400]!
+                          : Colors.grey[300]!,
+                    ),
                     borderRadius: BorderRadius.circular(12),
+                    color: _isCheckingAvailability ? Colors.grey[50] : null,
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.access_time, color: Colors.blue[700]),
+                      _isCheckingAvailability
+                          ? SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.blue[700]!),
+                              ),
+                            )
+                          : Icon(Icons.access_time, color: Colors.blue[700]),
                       const SizedBox(width: 16),
                       Text(
-                        _selectedTime.format(context),
-                        style: GoogleFonts.poppins(fontSize: 16),
+                        _isCheckingAvailability
+                            ? 'Verificando disponibilidad...'
+                            : _selectedTime.format(context),
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: _isCheckingAvailability
+                              ? Colors.grey[600]
+                              : null,
+                        ),
                       ),
                     ],
                   ),

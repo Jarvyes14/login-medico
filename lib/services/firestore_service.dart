@@ -6,6 +6,9 @@ import '../models/doctor_availability_model.dart';
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Getter para acceder a la instancia de Firestore
+  FirebaseFirestore get instance => _firestore;
+
   // ============ USUARIOS ============
   
   Future<void> createUser(UserModel user) async {
@@ -64,6 +67,29 @@ class FirestoreService {
     await _firestore.collection('citas').doc(appointmentId).update({
       'estado': 'cancelada',
     });
+  }
+
+  // Verificar disponibilidad de horario
+  Future<List<Map<String, dynamic>>> getAppointmentsByDate(String date) async {
+    try {
+      final snapshot = await _firestore
+          .collection('citas')
+          .where('date', isEqualTo: date)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'date': data['date'],
+          'time': data['time'],
+          'estado': data['estado'],
+        };
+      }).toList();
+    } catch (e) {
+      print('Error al consultar citas por fecha: $e');
+      return [];
+    }
   }
 
   // ============ DISPONIBILIDAD DE MÉDICOS ============
