@@ -26,6 +26,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   UserModel? _selectedDoctor;
   bool _isLoading = false;
   bool _isCheckingAvailability = false;
+  bool _hasSelectedTime = false; // Nueva variable para rastrear si se ha seleccionado una hora
 
   @override
   void initState() {
@@ -60,6 +61,50 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
     if (picked != null && picked != _selectedDate) {
       setState(() => _selectedDate = picked);
+      
+      // Si ya hay una hora seleccionada, re-validar disponibilidad
+      if (_hasSelectedTime) {
+        _revalidateTimeAvailability();
+      }
+    }
+  }
+
+  Future<void> _revalidateTimeAvailability() async {
+    setState(() {
+      _isCheckingAvailability = true;
+    });
+
+    final isAvailable = await _checkTimeAvailability(_selectedDate, _selectedTime);
+
+    setState(() {
+      _isCheckingAvailability = false;
+    });
+
+    if (!isAvailable && mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.orange[700]),
+              const SizedBox(width: 8),
+              const Text('Horario no disponible'),
+            ],
+          ),
+          content: Text(
+            'La hora seleccionada (${_selectedTime.format(context)}) no está disponible '
+            'para la nueva fecha. Ya existe una cita en ese horario o dentro de los 60 minutos siguientes.\n\n'
+            'Por favor, selecciona otro horario.',
+            style: GoogleFonts.poppins(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -143,8 +188,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     if (picked != null && picked != _selectedTime) {
       // Validar horario permitido (7:00 AM - 1:00 PM)
       final pickedMinutes = picked.hour * 60 + picked.minute;
-      final minTime = 7 * 60; // 7:00 AM
-      final maxTime = 13 * 60; // 1:00 PM
+      const minTime = 7 * 60; // 7:00 AM
+      const maxTime = 13 * 60; // 1:00 PM
 
       if (pickedMinutes < minTime || pickedMinutes > maxTime) {
         if (mounted) {
@@ -189,6 +234,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       if (isAvailable) {
         setState(() {
           _selectedTime = picked;
+          _hasSelectedTime = true; // Marcar que se ha seleccionado una hora
         });
 
         if (mounted) {

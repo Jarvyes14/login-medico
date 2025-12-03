@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../models/appointment_model.dart';
+import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 
 class EditAppointmentScreen extends StatefulWidget {
@@ -21,38 +22,34 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
   final _motivoController = TextEditingController();
   final _firestoreService = FirestoreService();
 
-  String? _selectedEspecialista;
+  UserModel? _selectedDoctor;
   DateTime? _selectedDate;
-  String? _selectedTime;
+  TimeOfDay? _selectedTime;
   bool _isLoading = false;
-
-  final List<String> _especialistas = [
-    'Cardiología',
-    'Neurología',
-    'Pediatría',
-    'Dermatología',
-    'Oftalmología',
-  ];
-
-  final List<String> _horarios = [
-    '09:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '12:00 PM',
-    '02:00 PM',
-    '03:00 PM',
-    '04:00 PM',
-    '05:00 PM',
-  ];
+  bool _isCheckingAvailability = false;
 
   @override
   void initState() {
     super.initState();
     // Cargar datos existentes
-    _selectedEspecialista = widget.appointment.medicoId;
     _selectedDate = widget.appointment.fechaHora;
-    _selectedTime = DateFormat('hh:mm a').format(widget.appointment.fechaHora);
+    _selectedTime = TimeOfDay(
+      hour: widget.appointment.fechaHora.hour,
+      minute: widget.appointment.fechaHora.minute,
+    );
     _motivoController.text = widget.appointment.motivo;
+    
+    // Cargar el doctor actual
+    _loadCurrentDoctor();
+  }
+
+  Future<void> _loadCurrentDoctor() async {
+    final doctor = await _firestoreService.getUser(widget.appointment.medicoId);
+    if (doctor != null && mounted) {
+      setState(() {
+        _selectedDoctor = doctor;
+      });
+    }
   }
 
   @override
@@ -72,6 +69,8 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
               primary: Colors.blue[700]!,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
             ),
           ),
           child: child!,
@@ -85,38 +84,198 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
     }
   }
 
+  Future<bool> _checkTimeAvailability(
+      DateTime selectedDate, TimeOfDay selectedTime) async {
+    try {
+      final selectedDateTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      final dateString =
+          '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+
+      final querySnapshot = await _firestoreService.instance
+          .collection('citas')
+          .where('date', isEqualTo: dateString)
+          .get();
+
+      for (var doc in querySnapshot.docs) {
+        // Excluir la cita actual de la verificación
+        if (doc.id == widget.appointment.id) continue;
+
+        final data = doc.data();
+        final existingTime = data['time'] as String;
+
+        final timeParts = existingTime.split(':');
+        final existingDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          int.parse(timeParts[0]),
+          int.parse(timeParts[1]),
+        );
+
+        final difference =
+            selectedDateTime.difference(existingDateTime).inMinutes;
+
+        if (difference.abs() < 60) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      print('Error al verificar disponibilidad: $e');
+      return false;
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            alwaysUse24HourFormat: false,
+          ),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Colors.blue[700]!,
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          ),
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedTime) {
+      // Validar horario permitido (7:00 AM - 1:00 PM)
+      final pickedMinutes = picked.hour * 60 + picked.minute;
+      final minTime = 7 * 60;
+      final maxTime = 13 * 60;
+
+      if (pickedMinutes < minTime || pickedMinutes > maxTime) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.red[700]),
+                  const SizedBox(width: 8),
+                  const Text('Horario no permitido'),
+                ],
+              ),
+              content: Text(
+                'Las citas solo pueden agendarse entre las 7:00 AM y la 1:00 PM.\n\n'
+                'Esto permite que la última cita termine como máximo a las 2:00 PM.',
+                style: GoogleFonts.poppins(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      if (_selectedDate != null) {
+        setState(() {
+          _isCheckingAvailability = true;
+        });
+
+        final isAvailable =
+            await _checkTimeAvailability(_selectedDate!, picked);
+
+        setState(() {
+          _isCheckingAvailability = false;
+        });
+
+        if (isAvailable) {
+          setState(() {
+            _selectedTime = picked;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Horario disponible: ${picked.format(context)}'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange[700]),
+                    const SizedBox(width: 8),
+                    const Text('Horario no disponible'),
+                  ],
+                ),
+                content: Text(
+                  'Ya existe una cita en ese horario o dentro de los 60 minutos siguientes. '
+                  'Por favor, selecciona otro horario.',
+                  style: GoogleFonts.poppins(),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Entendido'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor selecciona primero una fecha'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _updateAppointment() async {
     if (_formKey.currentState!.validate() &&
-        _selectedEspecialista != null &&
+        _selectedDoctor != null &&
         _selectedDate != null &&
         _selectedTime != null) {
       setState(() => _isLoading = true);
-
-      // Combinar fecha y hora
-      final timeparts = _selectedTime!.split(' ');
-      final hourMinute = timeparts[0].split(':');
-      int hour = int.parse(hourMinute[0]);
-      final minute = int.parse(hourMinute[1]);
-
-      if (timeparts[1] == 'PM' && hour != 12) {
-        hour += 12;
-      } else if (timeparts[1] == 'AM' && hour == 12) {
-        hour = 0;
-      }
 
       final fechaHora = DateTime(
         _selectedDate!.year,
         _selectedDate!.month,
         _selectedDate!.day,
-        hour,
-        minute,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
       );
 
       try {
         await _firestoreService.updateAppointment(
           widget.appointment.id!,
           {
-            'medico_id': _selectedEspecialista,
+            'medico_id': _selectedDoctor!.uid,
             'fecha_hora': fechaHora,
             'motivo': _motivoController.text,
           },
@@ -221,9 +380,9 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Especialista
+              // Selector de doctor
               Text(
-                'Especialidad',
+                'Doctor',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -231,33 +390,100 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedEspecialista,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.medical_services),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-                hint: const Text('Selecciona una especialidad'),
-                items: _especialistas.map((especialista) {
-                  return DropdownMenuItem(
-                    value: especialista,
-                    child: Text(especialista),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedEspecialista = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Por favor selecciona una especialidad';
+              StreamBuilder<List<UserModel>>(
+                stream: _firestoreService.getAllDoctors(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
-                  return null;
+
+                  final doctors = snapshot.data ?? [];
+
+                  // Eliminar duplicados basándose en el UID
+                  final uniqueDoctors = <String, UserModel>{};
+                  for (var doctor in doctors) {
+                    uniqueDoctors[doctor.uid] = doctor;
+                  }
+                  final doctorsList = uniqueDoctors.values.toList();
+
+                  if (doctorsList.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Text(
+                        'No hay doctores disponibles',
+                        style: GoogleFonts.poppins(color: Colors.orange[900]),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[50],
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        hint: const Text('Selecciona un doctor'),
+                        value: _selectedDoctor != null &&
+                                doctorsList
+                                    .any((d) => d.uid == _selectedDoctor!.uid)
+                            ? _selectedDoctor!.uid
+                            : null,
+                        items: doctorsList.map((doctor) {
+                          return DropdownMenuItem<String>(
+                            value: doctor.uid,
+                            child: Row(
+                              children: [
+                                Icon(Icons.person,
+                                    color: Colors.blue[700], size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Dr. ${doctor.nombre}',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        doctor.especialidad ?? '',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? uid) {
+                          if (uid != null) {
+                            final doctor = doctorsList
+                                .firstWhere((d) => d.uid == uid);
+                            setState(() {
+                              _selectedDoctor = doctor;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 24),
@@ -304,7 +530,7 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
 
               // Horario
               Text(
-                'Horario',
+                'Hora de la cita',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -312,43 +538,55 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _horarios.map((horario) {
-                  final isSelected = _selectedTime == horario;
-                  return InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedTime = horario;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue[700] : Colors.grey[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected
-                              ? Colors.blue[700]!
-                              : Colors.grey[300]!,
-                        ),
-                      ),
-                      child: Text(
-                        horario,
+              InkWell(
+                onTap: _isCheckingAvailability
+                    ? null
+                    : () => _selectTime(context),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _isCheckingAvailability
+                          ? Colors.grey[400]!
+                          : Colors.grey[400]!,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    color: _isCheckingAvailability
+                        ? Colors.grey[100]
+                        : Colors.grey[50],
+                  ),
+                  child: Row(
+                    children: [
+                      _isCheckingAvailability
+                          ? SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.blue[700]!),
+                              ),
+                            )
+                          : Icon(Icons.access_time, color: Colors.grey[700]),
+                      const SizedBox(width: 12),
+                      Text(
+                        _isCheckingAvailability
+                            ? 'Verificando disponibilidad...'
+                            : _selectedTime == null
+                                ? 'Selecciona una hora'
+                                : _selectedTime!.format(context),
                         style: GoogleFonts.poppins(
                           fontSize: 14,
-                          color: isSelected ? Colors.white : Colors.grey[800],
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.normal,
+                          color: _isCheckingAvailability
+                              ? Colors.grey[600]
+                              : _selectedTime == null
+                                  ? Colors.grey[600]
+                                  : Colors.grey[800],
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
 

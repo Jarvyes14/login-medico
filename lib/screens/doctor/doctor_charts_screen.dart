@@ -44,7 +44,7 @@ class DoctorChartsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             AppointmentsByDayBarChart(
               appointmentsStream:
-                  _firestoreService.getDoctorAppointments(user!.uid),
+                  _firestoreService.getDoctorAppointments(user.uid),
             ),
             const SizedBox(height: 32),
           ],

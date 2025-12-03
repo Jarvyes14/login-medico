@@ -40,6 +40,10 @@ class AppointmentModel {
       'motivo': motivo,
       'estado': estado,
       'created_at': Timestamp.fromDate(createdAt),
+      
+      // ⭐ Agregar estos campos para la validación
+      'date': '${fechaHora.year}-${fechaHora.month.toString().padLeft(2, '0')}-${fechaHora.day.toString().padLeft(2, '0')}',
+      'time': '${fechaHora.hour.toString().padLeft(2, '0')}:${fechaHora.minute.toString().padLeft(2, '0')}',
     };
   }
 }
